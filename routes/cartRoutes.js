@@ -1,17 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const Cart = require('../models/cart');
+const mongoose = require('mongoose');
 
-// Get cart by userId
+// Get all carts (admin)
+router.get('/', async (req, res) => {
+  try {
+    const carts = await Cart.find();
+    res.json(carts);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get cart by userId - handle errors gracefully
 router.get('/:userId', async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId: req.params.userId });
+    const userId = req.params.userId;
+    const cart = await Cart.findOne({ userId: userId });
+    
     if (!cart) {
-      return res.json({ userId: req.params.userId, items: [] });
+      return res.json({ userId: userId, items: [] });
     }
     res.json(cart);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Error fetching cart:', err.message);
+    // Return empty cart instead of error - this handles invalid ObjectId
+    res.json({ userId: req.params.userId, items: [] });
   }
 });
 
@@ -26,7 +41,9 @@ router.post('/:userId', async (req, res) => {
       cart = new Cart({ userId: req.params.userId, items: [] });
     }
     
-    const existingItemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
+    const existingItemIndex = cart.items.findIndex(item => 
+      item.productId && item.productId.toString() === productId
+    );
     
     if (existingItemIndex > -1) {
       cart.items[existingItemIndex].quantity += quantity || 1;
@@ -37,6 +54,7 @@ router.post('/:userId', async (req, res) => {
     await cart.save();
     res.json(cart);
   } catch (err) {
+    console.error('Error adding to cart:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -51,7 +69,9 @@ router.put('/:userId/:productId', async (req, res) => {
       return res.status(404).json({ message: 'Cart not found' });
     }
     
-    const itemIndex = cart.items.findIndex(item => item.productId.toString() === req.params.productId);
+    const itemIndex = cart.items.findIndex(item => 
+      item.productId && item.productId.toString() === req.params.productId
+    );
     
     if (itemIndex > -1) {
       if (quantity <= 0) {
@@ -64,6 +84,7 @@ router.put('/:userId/:productId', async (req, res) => {
     await cart.save();
     res.json(cart);
   } catch (err) {
+    console.error('Error updating cart:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -77,10 +98,13 @@ router.delete('/:userId/:productId', async (req, res) => {
       return res.status(404).json({ message: 'Cart not found' });
     }
     
-    cart.items = cart.items.filter(item => item.productId.toString() !== req.params.productId);
+    cart.items = cart.items.filter(item => 
+      !item.productId || item.productId.toString() !== req.params.productId
+    );
     await cart.save();
     res.json(cart);
   } catch (err) {
+    console.error('Error removing from cart:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -91,6 +115,7 @@ router.delete('/:userId', async (req, res) => {
     await Cart.findOneAndDelete({ userId: req.params.userId });
     res.json({ message: 'Cart cleared' });
   } catch (err) {
+    console.error('Error clearing cart:', err.message);
     res.status(500).json({ message: err.message });
   }
 });

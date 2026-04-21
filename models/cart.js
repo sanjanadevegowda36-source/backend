@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  productId: { type: String, required: true }, // Changed to String to allow flexibility
   name: { type: String, required: true },
   brand: { type: String },
   price: { type: Number, required: true },
@@ -13,7 +13,7 @@ const cartItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const cartSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: String, required: true }, // Changed to String to allow both ObjectId and email
   items: [cartItemSchema],
 }, { timestamps: true });
 
